@@ -24,3 +24,4 @@ htmlcov/
 # Scratch Scripts & Temp Files
 scratch_clean.py
 *.tmp
+
