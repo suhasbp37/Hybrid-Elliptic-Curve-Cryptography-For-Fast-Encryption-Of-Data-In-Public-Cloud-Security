@@ -1,0 +1,26 @@
+# Environment & Cloud Credentials (NEVER COMMIT)
+.env
+.env.*
+!.env.example
+
+# Client-Side KMS Vaults & Private Key Material
+vaults/
+kms_data/
+icat_tokens/
+local_version_ledger.json
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+
+# Testing & Artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# Scratch Scripts & Temp Files
+scratch_clean.py
+*.tmp

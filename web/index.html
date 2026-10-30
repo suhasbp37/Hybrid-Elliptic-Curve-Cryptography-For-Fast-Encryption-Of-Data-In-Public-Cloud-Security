@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="HECC Phase 2 — Quantum-Resistant Hybrid Cryptography Transmitter. Parallel AES-256-GCM, ML-KEM-768, and ICAT KMS.">
+<title>HECC Phase 2 — Quantum Hybrid Transmitter &amp; ICAT KMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-deep: #06090f;
+  --bg-surface: #0b111c;
+  --bg-subtle: #101929;
+  --bg-field: #090e17;
+  --border-line: #1b263b;
+  --border-hover: #2d3f5d;
+  --accent-cyan: #38bdf8;
+  --accent-emerald: #00e5a3;
+  --accent-coral: #fb7185;
+  --text-main: #f1f5f9;
+  --text-dim: #94a3b8;
+  --text-muted: #64748b;
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --radius-panel: 14px;
+  --radius-control: 8px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-deep);
+  color: var(--text-main);
+  min-height: 100vh;
+  line-height: 1.5;
+  padding: 2.5rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-image: 
+    radial-gradient(circle at 50% -10%, rgba(56, 189, 248, 0.08) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(16, 25, 41, 0.4) 0%, transparent 100%);
+}
+
+.workspace-shell { width: 100%; max-width: 840px; }
+
+.masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-line);
+}
+
+.system-title-group h1 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.system-badge {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(0, 229, 163, 0.12);
+  color: var(--accent-emerald);
+  border: 1px solid rgba(0, 229, 163, 0.3);
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+}
+
+.system-description {
+  color: var(--text-dim);
+  font-size: 0.88rem;
+  margin-top: 0.35rem;
+  max-width: 540px;
+}
+
+.console-switch {
+  display: flex;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-line);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.console-switch a {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.console-switch a.active {
+  background: var(--bg-subtle);
+  color: var(--accent-cyan);
+  border: 1px solid var(--border-line);
+}
+
+.console-switch a:not(.active) { color: var(--text-muted); }
+.console-switch a:not(.active):hover { color: var(--text-main); }
+
+.panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-panel);
+  padding: 1.75rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+  transition: border-color 0.2s ease, opacity 0.25s ease;
+}
+
+.panel:hover { border-color: var(--border-hover); }
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 1.25rem;
+}
+
+.panel-title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+}
+
+.panel-spec {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.auth-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border-line);
+  padding-bottom: 0.5rem;
+}
+
+.auth-tab-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.88rem;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.auth-tab-btn.active {
+  color: var(--accent-cyan);
+  background: var(--bg-subtle);
+}
+
+.auth-badge-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-control);
+  background: rgba(0, 229, 163, 0.08);
+  border: 1px solid rgba(0, 229, 163, 0.25);
+  margin-bottom: 1rem;
+}
+
+.auth-badge-text {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--accent-emerald);
+}
+
+.btn-logout {
+  background: transparent;
+  border: 1px solid rgba(251, 113, 133, 0.35);
+  color: var(--accent-coral);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-logout:hover {
+  background: rgba(251, 113, 133, 0.15);
+}
+
+.form-group { margin-bottom: 1.25rem; }
+
+.field-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-dim);
+  margin-bottom: 0.5rem;
+}
+
+.input-field, select.input-field {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-field);
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-control);
+  color: var(--text-main);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-field:focus {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
+}
+
+.dropzone {
+  position: relative;
+  background: var(--bg-field);
+  border: 1px dashed var(--border-hover);
+  border-radius: var(--radius-control);
+  padding: 1.75rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dropzone:hover {
+  border-color: var(--accent-cyan);
+  background: rgba(16, 25, 41, 0.4);
+}
+
+.dropzone input[type="file"] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.dropzone-icon {
+  width: 32px;
+  height: 32px;
+  margin: 0 auto 0.75rem;
+  color: var(--text-muted);
+  transition: color 0.2s ease;
+}
+
+.dropzone:hover .dropzone-icon { color: var(--accent-cyan); }
+
+.file-name-display {
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.dropzone-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.btn-primary {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.85rem 1.25rem;
+  background: linear-gradient(135deg, #00e5a3 0%, #059669 100%);
+  color: #041a12;
+  border: none;
+  border-radius: var(--radius-control);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 10px rgba(0, 229, 163, 0.2);
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 229, 163, 0.32);
+}
+
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+.btn-secondary {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-line);
+  color: var(--text-main);
+  border-radius: var(--radius-control);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: #152236;
+  border-color: var(--border-hover);
+}
+
+.btn-icat {
+  margin-top: 1rem;
+  background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+  color: #041a2f;
+  font-weight: 700;
+}
+
+.btn-icat:hover {
+  box-shadow: 0 4px 16px rgba(56, 189, 248, 0.35);
+}
+
+.telemetry-deck {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-line);
+}
+
+.metric-cell {
+  background: var(--bg-field);
+  border: 1px solid var(--border-line);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+}
+
+.metric-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.metric-value {
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--accent-emerald);
+  margin-top: 0.3rem;
+  word-break: break-all;
+}
+
+.metric-value.hash { font-size: 0.85rem; color: var(--accent-cyan); }
+
+.status {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-control);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  display: none;
+}
+
+.status.ok {
+  display: block;
+  background: rgba(0, 229, 163, 0.08);
+  border: 1px solid rgba(0, 229, 163, 0.25);
+  color: var(--accent-emerald);
+}
+
+.status.err {
+  display: block;
+  background: rgba(251, 113, 133, 0.08);
+  border: 1px solid rgba(251, 113, 133, 0.25);
+  color: var(--accent-coral);
+}
+
+.status.info {
+  display: block;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  color: var(--accent-cyan);
+}
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(0, 0, 0, 0.3);
+  border-top-color: #041a12;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  vertical-align: middle;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="workspace-shell">
+  <!-- Masthead -->
+  <header class="masthead">
+    <div class="system-title-group">
+      <h1>
+        HECC-P2 Transmitter
+        <span class="system-badge">ICAT-KMS Active</span>
+      </h1>
+      <p class="system-description">
+        Dual-primitive hybrid engine combining X25519 agreement, ML-KEM-768 post-quantum encapsulation, parallel AES-256-GCM, and Identity-Bound Access Capsules.
+      </p>
+    </div>
+    <nav class="console-switch" aria-label="Workbench Selector">
+      <a href="/" class="active">Transmitter</a>
+      <a href="/receiver">Decryption Vault</a>
+    </nav>
+  </header>
+
+  <!-- Step 1: Authentication & Vault Attestation -->
+  <section class="panel" id="auth-card">
+    <div class="panel-header">
+      <h2 class="panel-title">01. Cryptographic Authentication &amp; KMS Vault</h2>
+      <span class="panel-spec">Scrypt KEK + Ed25519</span>
+    </div>
+
+    <!-- Active session badge (hidden until login) -->
+    <div id="session-box" class="auth-badge-box" style="display: none;">
+      <div class="auth-badge-text" id="session-badge">Authenticated: alice@demo.local | KMS Vault: Unlocked</div>
+      <button class="btn-logout" onclick="doLogout()">Logout</button>
+    </div>
+
+    <div id="auth-forms">
+      <div class="auth-tabs">
+        <button id="tab-login" class="auth-tab-btn active" onclick="switchTab('login')">Sign In</button>
+        <button id="tab-register" class="auth-tab-btn" onclick="switchTab('register')">Register New Identity</button>
+      </div>
+
+      <div class="form-group">
+        <label class="field-label" for="auth-email">Account Email</label>
+        <input type="email" id="auth-email" class="input-field" placeholder="username@mail.com" spellcheck="false" required oninput="validateEmailField(this, 'email-feedback')">
+        <div id="email-feedback" style="font-size: 0.78rem; margin-top: 0.35rem; font-family: var(--font-mono); color: var(--text-muted);">
+          Format: username@mail.com (e.g. user@example.com)
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="field-label" for="auth-password">Password</label>
+        <input type="password" id="auth-password" class="input-field" placeholder="Enter account password" required>
+      </div>
+
+      <button id="auth-btn" class="btn-secondary" onclick="handleAuthSubmit()">Unlock &amp; Authorize Transmitter</button>
+    </div>
+
+    <div class="status" id="auth-status" role="status"></div>
+  </section>
+
+  <!-- Step 2: Payload Staging & ICAT Upload -->
+  <section class="panel" id="upload-card" style="opacity: 0.45; pointer-events: none;">
+    <div class="panel-header">
+      <h2 class="panel-title">02. Payload Ingestion &amp; ICAT Encapsulation</h2>
+      <span class="panel-spec">Identity-Bound AAD</span>
+    </div>
+
+    <div class="form-group">
+      <label class="field-label" for="file-input">Target Payload</label>
+      <div class="dropzone" id="drop-area">
+        <input type="file" id="file-input" onchange="onFileSelected(this)">
+        <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <div class="file-name-display" id="file-label">Select or drop file for hybrid encryption</div>
+        <div class="dropzone-hint">Local file will be partitioned into authenticated fragments</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="field-label" for="receiver-select">Authorized Recipient Email</label>
+      <input type="email" id="receiver-select" class="input-field" list="receivers-list" placeholder="recipient@mail.com" spellcheck="false" required oninput="validateEmailField(this, 'receiver-feedback')">
+      <datalist id="receivers-list">
+      </datalist>
+      <div id="receiver-feedback" style="font-size: 0.78rem; margin-top: 0.35rem; font-family: var(--font-mono); color: var(--text-muted);">
+        Format: username@mail.com (type any email or select registered user)
+      </div>
+    </div>
+
+    <button id="upload-btn" class="btn-primary" onclick="doUpload()" disabled>
+      Encrypt, Capsule &amp; Vault to Supabase
+    </button>
+    
+    <div class="status" id="upload-status" role="status"></div>
+
+    <!-- ICAT Token Download Button (appears after encryption) -->
+    <div id="icat-download-area" style="display: none;">
+      <button id="download-icat-btn" class="btn-primary btn-icat" onclick="downloadICATToken()">
+        ⬇ Download ICAT Key Capsule (.icat.json)
+      </button>
+    </div>
+
+    <!-- Cryptographic Telemetry -->
+    <div class="telemetry-deck" id="metrics" style="display: none;">
+      <div class="metric-cell">
+        <div class="metric-label">Payload Volume</div>
+        <div class="metric-value" id="m-size">—</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-label">Fragments Sharded</div>
+        <div class="metric-value" id="m-frags">—</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-label">KEM Establishment</div>
+        <div class="metric-value" id="m-key">—</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-label">Parallel AES-GCM</div>
+        <div class="metric-value" id="m-enc">—</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-label">Chain Version</div>
+        <div class="metric-value" id="m-ver">—</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-label">Supabase Record ID</div>
+        <div class="metric-value hash" id="m-fid">—</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+let TOKEN = null;
+let USER_EMAIL = null;
+let KMS_PASSPHRASE = null;
+let LATEST_ICAT_TOKEN = null;
+let ACTIVE_AUTH_MODE = 'login';
+
+const EMAIL_REGEX = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
+
+function validateEmailField(input, feedbackId) {
+  const fb = document.getElementById(feedbackId);
+  const val = input.value.trim();
+  if (!val) {
+    fb.innerHTML = 'Format must be: username@mail.com (e.g. user@example.com)';
+    fb.style.color = 'var(--text-muted)';
+    return false;
+  }
+  if (!EMAIL_REGEX.test(val)) {
+    fb.innerHTML = '⚠️ Invalid email format! Must be in <strong>username@mail.com</strong> format.';
+    fb.style.color = 'var(--accent-coral)';
+    return false;
+  }
+  fb.innerHTML = '✓ Valid email address format.';
+  fb.style.color = 'var(--accent-emerald)';
+  return true;
+}
+
+function setStatus(id, cls, msg) {
+  const el = document.getElementById(id);
+  el.className = 'status ' + cls;
+  el.innerHTML = msg;
+  el.style.display = 'block';
+}
+
+function switchTab(mode) {
+  ACTIVE_AUTH_MODE = mode;
+  document.getElementById('tab-login').classList.toggle('active', mode === 'login');
+  document.getElementById('tab-register').classList.toggle('active', mode === 'register');
+  document.getElementById('auth-btn').textContent = mode === 'login' ? 'Unlock & Authorize Transmitter' : 'Register Identity & Unlock Transmitter';
+}
+
+async function handleAuthSubmit() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+
+  if (!email || !password) {
+    setStatus('auth-status', 'err', '⚠️ Please complete both Email and Password fields.');
+    return;
+  }
+
+  if (!EMAIL_REGEX.test(email)) {
+    setStatus('auth-status', 'err', '⚠️ Invalid email format. Email must be in username@mail.com format (e.g. user@example.com).');
+    return;
+  }
+
+  const endpoint = ACTIVE_AUTH_MODE === 'register' ? '/api/auth/register' : '/api/auth/login';
+  const fd = new FormData();
+  fd.append('email', email);
+  fd.append('account_password', password);
+  fd.append('kms_passphrase', password);
+
+  setStatus('auth-status', 'info', '<span class="spinner"></span> Attesting cryptographic credentials...');
+
+  try {
+    const res = await fetch(endpoint, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.detail || data.message || 'Authentication failed');
+    }
+
+    TOKEN = data.token;
+    USER_EMAIL = email;
+    KMS_PASSPHRASE = password;
+
+    localStorage.setItem('jwt_token', TOKEN);
+    localStorage.setItem('user_email', USER_EMAIL);
+    localStorage.setItem('account_password', password);
+
+    onAuthSuccess(data);
+  } catch (err) {
+    setStatus('auth-status', 'err', '✗ ' + err.message);
+  }
+}
+
+function onAuthSuccess(data) {
+  document.getElementById('auth-forms').style.display = 'none';
+  document.getElementById('session-box').style.display = 'flex';
+  document.getElementById('session-badge').textContent = `Authenticated: ${USER_EMAIL} | Transmitter Ready`;
+  setStatus('auth-status', 'ok', `✓ Session authorized as ${USER_EMAIL}. Ready to encrypt and vault.`);
+
+  document.getElementById('upload-card').style.opacity = '1';
+  document.getElementById('upload-card').style.pointerEvents = 'auto';
+
+  fetchReceivers();
+}
+
+async function fetchReceivers() {
+  try {
+    const res = await fetch('/api/users', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    if (res.ok) {
+      const j = await res.json();
+      const list = document.getElementById('receivers-list');
+      const filtered = (j.users || []).filter(u => u !== USER_EMAIL);
+      if (filtered.length > 0) {
+        list.innerHTML = filtered.map(u => `<option value="${u}">`).join('');
+      }
+    }
+  } catch (_) {}
+}
+
+function doLogout() {
+  localStorage.removeItem('jwt_token');
+  localStorage.removeItem('user_email');
+  localStorage.removeItem('account_password');
+  TOKEN = null;
+  USER_EMAIL = null;
+  KMS_PASSPHRASE = null;
+  LATEST_ICAT_TOKEN = null;
+
+  document.getElementById('auth-forms').style.display = 'block';
+  document.getElementById('session-box').style.display = 'none';
+  document.getElementById('upload-card').style.opacity = '0.45';
+  document.getElementById('upload-card').style.pointerEvents = 'none';
+  setStatus('auth-status', 'info', 'Logged out. Session cleared.');
+}
+
+function onFileSelected(inp) {
+  const name = inp.files[0]?.name || 'Select or drop file for hybrid encryption';
+  document.getElementById('file-label').textContent = name;
+  document.getElementById('upload-btn').disabled = !inp.files.length;
+}
+
+function fmtSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+  return (b / 1048576).toFixed(2) + ' MB';
+}
+
+async function doUpload() {
+  const btn = document.getElementById('upload-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Encapsulating &amp; Uploading…';
+  setStatus('upload-status', 'info', 'Establishing hybrid key (X25519 + ML-KEM-768), parallel sharding with identity-bound AAD, and signing ICAT capsule…');
+
+  const file = document.getElementById('file-input').files[0];
+  const receiver = document.getElementById('receiver-select').value.trim();
+
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!EMAIL_REGEX.test(receiver)) {
+    setStatus('upload-status', 'err', '⚠️ Invalid recipient email format. Email must be in username@mail.com format (e.g. user@example.com).');
+    btn.disabled = false;
+    btn.textContent = 'Encrypt, Capsule & Vault to Supabase';
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('receiver_email', receiver);
+  if (KMS_PASSPHRASE) {
+    fd.append('sender_passphrase', KMS_PASSPHRASE);
+  }
+
+  try {
+    const r = await fetch('/api/upload', {
+      method: 'POST',
+      body: fd,
+      headers: { 'Authorization': 'Bearer ' + TOKEN }
+    });
+    const text = await r.text();
+    let data;
+    try { data = JSON.parse(text); } catch (_) {}
+    if (!r.ok) {
+      throw new Error((data && data.detail) || text || r.statusText);
+    }
+    const j = data;
+    LATEST_ICAT_TOKEN = j.icat_token;
+
+    setStatus('upload-status', 'ok', '✓ Payload encrypted, identity-bound to receiver, and vaulted to Supabase.');
+    document.getElementById('metrics').style.display = 'grid';
+    document.getElementById('m-size').textContent = fmtSize(j.file_size_bytes);
+    document.getElementById('m-frags').textContent = j.fragments_created;
+    document.getElementById('m-key').textContent = j.hybrid_key_time_ms.toFixed(2) + ' ms';
+    document.getElementById('m-enc').textContent = j.parallel_aes_gcm_time_s.toFixed(4) + ' s';
+    document.getElementById('m-ver').textContent = 'v' + j.version;
+    document.getElementById('m-fid').textContent = j.file_id;
+
+    if (LATEST_ICAT_TOKEN) {
+      document.getElementById('icat-download-area').style.display = 'block';
+    }
+  } catch (e) {
+    setStatus('upload-status', 'err', '✗ ' + e.message);
+  }
+  btn.disabled = false;
+  btn.textContent = 'Encrypt, Capsule & Vault to Supabase';
+}
+
+function downloadICATToken() {
+  if (!LATEST_ICAT_TOKEN) return;
+  const jsonStr = JSON.stringify(LATEST_ICAT_TOKEN, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${LATEST_ICAT_TOKEN.file_id}.icat.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Check saved session on load
+window.addEventListener('DOMContentLoaded', () => {
+  const savedToken = localStorage.getItem('jwt_token');
+  const savedEmail = localStorage.getItem('user_email');
+  const savedPass = localStorage.getItem('account_password');
+  if (savedToken && savedEmail) {
+    TOKEN = savedToken;
+    USER_EMAIL = savedEmail;
+    KMS_PASSPHRASE = savedPass;
+    onAuthSuccess({});
+  }
+});
+</script>
+</body>
+</html>

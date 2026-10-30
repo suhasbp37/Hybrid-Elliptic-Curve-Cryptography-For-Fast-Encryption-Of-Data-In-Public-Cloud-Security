@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="HECC Phase 2 — Decryption Vault and ICAT Access Capsule Ingestion with Anti-MITM and Anti-Rollback validation.">
+<title>HECC Phase 2 — Decryption Vault &amp; ICAT Ingestion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-deep: #06090f;
+  --bg-surface: #0b111c;
+  --bg-subtle: #101929;
+  --bg-field: #090e17;
+  --border-line: #1b263b;
+  --border-hover: #2d3f5d;
+  --accent-cyan: #38bdf8;
+  --accent-emerald: #00e5a3;
+  --accent-coral: #fb7185;
+  --text-main: #f1f5f9;
+  --text-dim: #94a3b8;
+  --text-muted: #64748b;
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --radius-panel: 14px;
+  --radius-control: 8px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-deep);
+  color: var(--text-main);
+  min-height: 100vh;
+  line-height: 1.5;
+  padding: 2.5rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-image: 
+    radial-gradient(circle at 50% -10%, rgba(0, 229, 163, 0.08) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(16, 25, 41, 0.4) 0%, transparent 100%);
+}
+
+.workspace-shell { width: 100%; max-width: 880px; }
+
+.masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-line);
+}
+
+.system-title-group h1 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.system-badge {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(56, 189, 248, 0.12);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+}
+
+.system-description {
+  color: var(--text-dim);
+  font-size: 0.88rem;
+  margin-top: 0.35rem;
+  max-width: 560px;
+}
+
+.console-switch {
+  display: flex;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-line);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.console-switch a {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.console-switch a.active {
+  background: var(--bg-subtle);
+  color: var(--accent-emerald);
+  border: 1px solid var(--border-line);
+}
+
+.console-switch a:not(.active) { color: var(--text-muted); }
+.console-switch a:not(.active):hover { color: var(--text-main); }
+
+.panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-panel);
+  padding: 1.75rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+  transition: border-color 0.2s ease, opacity 0.25s ease;
+}
+
+.panel:hover { border-color: var(--border-hover); }
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 1.25rem;
+}
+
+.panel-title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+}
+
+.panel-spec {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.auth-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border-line);
+  padding-bottom: 0.5rem;
+}
+
+.auth-tab-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.88rem;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.auth-tab-btn.active {
+  color: var(--accent-emerald);
+  background: var(--bg-subtle);
+}
+
+.auth-badge-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-control);
+  background: rgba(0, 229, 163, 0.08);
+  border: 1px solid rgba(0, 229, 163, 0.25);
+  margin-bottom: 1rem;
+}
+
+.auth-badge-text {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--accent-emerald);
+}
+
+.btn-logout {
+  background: transparent;
+  border: 1px solid rgba(251, 113, 133, 0.35);
+  color: var(--accent-coral);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-logout:hover { background: rgba(251, 113, 133, 0.15); }
+
+.form-group { margin-bottom: 1.25rem; }
+
+.field-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-dim);
+  margin-bottom: 0.5rem;
+}
+
+.input-field {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-field);
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-control);
+  color: var(--text-main);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-field:focus {
+  border-color: var(--accent-emerald);
+  box-shadow: 0 0 0 3px rgba(0, 229, 163, 0.12);
+}
+
+.btn-primary {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.85rem 1.25rem;
+  background: linear-gradient(135deg, #00e5a3 0%, #059669 100%);
+  color: #041a12;
+  border: none;
+  border-radius: var(--radius-control);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 10px rgba(0, 229, 163, 0.2);
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 229, 163, 0.32);
+}
+
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+.btn-secondary {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-line);
+  color: var(--text-main);
+  border-radius: var(--radius-control);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: #152236;
+  border-color: var(--border-hover);
+}
+
+.btn-accent {
+  background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+  color: #041a2f;
+  font-weight: 700;
+}
+
+.btn-accent:hover { box-shadow: 0 4px 16px rgba(56, 189, 248, 0.35); }
+
+.table-wrapper {
+  overflow-x: auto;
+  margin-top: 0.85rem;
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-control);
+  background: var(--bg-field);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+th {
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-line);
+  background: rgba(16, 25, 41, 0.4);
+}
+
+td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(27, 38, 59, 0.5);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+}
+
+tr { cursor: pointer; transition: background 0.15s ease; }
+tr:hover td { background: rgba(56, 189, 248, 0.05); color: var(--text-main); }
+tr.selected td {
+  background: rgba(0, 229, 163, 0.08);
+  color: var(--accent-emerald);
+  border-color: rgba(0, 229, 163, 0.2);
+}
+
+.version-pill {
+  display: inline-block;
+  padding: 0.12rem 0.45rem;
+  border-radius: 4px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-line);
+  color: var(--accent-cyan);
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.status {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-control);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  display: none;
+}
+
+.status.ok {
+  display: block;
+  background: rgba(0, 229, 163, 0.08);
+  border: 1px solid rgba(0, 229, 163, 0.25);
+  color: var(--accent-emerald);
+}
+
+.status.err {
+  display: block;
+  background: rgba(251, 113, 133, 0.08);
+  border: 1px solid rgba(251, 113, 133, 0.25);
+  color: var(--accent-coral);
+}
+
+.status.info {
+  display: block;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  color: var(--accent-cyan);
+}
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(0, 0, 0, 0.3);
+  border-top-color: #041a12;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  vertical-align: middle;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="workspace-shell">
+  <!-- Masthead -->
+  <header class="masthead">
+    <div class="system-title-group">
+      <h1>
+        HECC-P2 Decryption Vault
+        <span class="system-badge">ICAT Verified</span>
+      </h1>
+      <p class="system-description">
+        Authenticates caller permissions, validates Ed25519 capsule signatures, audits Merkle and anti-rollback chains, reconstructs hybrid keys, and decrypts fragmented payloads.
+      </p>
+    </div>
+    <nav class="console-switch" aria-label="Workbench Selector">
+      <a href="/">Transmitter</a>
+      <a href="/receiver" class="active">Decryption Vault</a>
+    </nav>
+  </header>
+
+  <!-- Step 1: Authentication -->
+  <section class="panel" id="auth-card">
+    <div class="panel-header">
+      <h2 class="panel-title">01. Receiver Authentication &amp; KMS Vault</h2>
+      <span class="panel-spec">Scrypt KEK + Access Control</span>
+    </div>
+
+    <!-- Active session badge -->
+    <div id="session-box" class="auth-badge-box" style="display: none;">
+      <div class="auth-badge-text" id="session-badge">Authenticated: bob@demo.local | KMS Vault: Unlocked</div>
+      <button class="btn-logout" onclick="doLogout()">Logout</button>
+    </div>
+
+    <div id="auth-forms">
+      <div class="auth-tabs">
+        <button id="tab-login" class="auth-tab-btn active" onclick="switchTab('login')">Sign In</button>
+        <button id="tab-register" class="auth-tab-btn" onclick="switchTab('register')">Register New Identity</button>
+      </div>
+
+      <div class="form-group">
+        <label class="field-label" for="auth-email">Account Email</label>
+        <input type="email" id="auth-email" class="input-field" placeholder="username@mail.com" spellcheck="false" required oninput="validateEmailField(this, 'email-feedback')">
+        <div id="email-feedback" style="font-size: 0.78rem; margin-top: 0.35rem; font-family: var(--font-mono); color: var(--text-muted);">
+          Format: username@mail.com (e.g. user@example.com)
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="field-label" for="auth-password">Password</label>
+        <input type="password" id="auth-password" class="input-field" placeholder="Enter account password" required>
+      </div>
+
+      <button id="auth-btn" class="btn-secondary" onclick="handleAuthSubmit()">Authorize Vault Access</button>
+    </div>
+
+    <div class="status" id="auth-status" role="status"></div>
+  </section>
+
+  <!-- Step 2: Inbound Cloud Files (Shared via Supabase) -->
+  <section class="panel" id="files-card" style="opacity: 0.45; pointer-events: none;">
+    <div class="panel-header">
+      <h2 class="panel-title">02. Cloud Inbound Enclaves</h2>
+      <span class="panel-spec">Supabase Encrypted Bucket</span>
+    </div>
+    <button class="btn-secondary" onclick="loadFiles()" style="margin-bottom: 0.75rem;">Query Shared Files</button>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Artifact ID</th>
+            <th>Original Filename</th>
+            <th>Sender Origin</th>
+            <th>Version Chain</th>
+          </tr>
+        </thead>
+        <tbody id="file-list">
+          <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No encrypted files queried yet</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-dim); margin-top: 1.25rem; margin-bottom: 0.75rem;">
+      Selected Target: <span id="selected-file" style="color: var(--accent-emerald); font-weight: 600;">None selected</span>
+    </div>
+    <button id="decrypt-cloud-btn" class="btn-primary" onclick="doDecryptCloud()" disabled>
+      Validate Integrity &amp; Decrypt Cloud Payload
+    </button>
+    <div class="status" id="cloud-status" role="status"></div>
+  </section>
+
+  <!-- Step 3: Offline / ICAT Capsule Ingestion (.icat.json) -->
+  <section class="panel" id="icat-card" style="opacity: 0.45; pointer-events: none;">
+    <div class="panel-header">
+      <h2 class="panel-title">03. Ingest ICAT Capsule (.icat.json)</h2>
+      <span class="panel-spec">Split-Trust Decapsulation</span>
+    </div>
+    <p style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 1rem;">
+      Upload an external <code>.icat.json</code> token file to authenticate sender identity, audit the Ed25519 capsule signature, decapsulate the ML-KEM-768 ciphertext, and parallel-decrypt all fragments.
+    </p>
+
+    <div class="form-group">
+      <label class="field-label" for="icat-file-input">Select .icat.json Capsule File</label>
+      <input type="file" id="icat-file-input" class="input-field" accept=".json,.icat.json">
+    </div>
+
+    <button id="icat-decrypt-btn" class="btn-primary btn-accent" onclick="doIngestAndDecrypt()">
+      Validate Capsule Signature &amp; Decrypt Payload
+    </button>
+    <div class="status" id="icat-status" role="status"></div>
+  </section>
+</div>
+
+<script>
+let TOKEN = null;
+let USER_EMAIL = null;
+let KMS_PASSPHRASE = null;
+let SELECTED = null;
+let ACTIVE_AUTH_MODE = 'login';
+const EMAIL_REGEX = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
+
+function validateEmailField(input, feedbackId) {
+  const fb = document.getElementById(feedbackId);
+  const val = input.value.trim();
+  if (!val) {
+    fb.innerHTML = 'Format must be: username@mail.com (e.g. user@example.com)';
+    fb.style.color = 'var(--text-muted)';
+    return false;
+  }
+  if (!EMAIL_REGEX.test(val)) {
+    fb.innerHTML = '⚠️ Invalid email format! Must be in <strong>username@mail.com</strong> format.';
+    fb.style.color = 'var(--accent-coral)';
+    return false;
+  }
+  fb.innerHTML = '✓ Valid email address format.';
+  fb.style.color = 'var(--accent-emerald)';
+  return true;
+}
+
+function setStatus(id, cls, msg) {
+  const el = document.getElementById(id);
+  el.className = 'status ' + cls;
+  el.innerHTML = msg;
+  el.style.display = 'block';
+}
+
+function switchTab(mode) {
+  ACTIVE_AUTH_MODE = mode;
+  document.getElementById('tab-login').classList.toggle('active', mode === 'login');
+  document.getElementById('tab-register').classList.toggle('active', mode === 'register');
+  document.getElementById('auth-btn').textContent = mode === 'login' ? 'Authorize Vault Access' : 'Register Identity & Unlock Vault';
+}
+
+async function handleAuthSubmit() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+
+  if (!email || !password) {
+    setStatus('auth-status', 'err', '⚠️ Please complete both Email and Password fields.');
+    return;
+  }
+
+  if (!EMAIL_REGEX.test(email)) {
+    setStatus('auth-status', 'err', '⚠️ Invalid email format. Email must be in username@mail.com format (e.g. user@example.com).');
+    return;
+  }
+
+  const endpoint = ACTIVE_AUTH_MODE === 'register' ? '/api/auth/register' : '/api/auth/login';
+  const fd = new FormData();
+  fd.append('email', email);
+  fd.append('account_password', password);
+  fd.append('kms_passphrase', password);
+
+  setStatus('auth-status', 'info', '<span class="spinner"></span> Attesting cryptographic credentials...');
+
+  try {
+    const res = await fetch(endpoint, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.detail || data.message || 'Authentication failed');
+    }
+
+    TOKEN = data.token;
+    USER_EMAIL = email;
+    KMS_PASSPHRASE = password;
+
+    localStorage.setItem('jwt_token', TOKEN);
+    localStorage.setItem('user_email', USER_EMAIL);
+    localStorage.setItem('account_password', password);
+
+    onAuthSuccess(data);
+  } catch (err) {
+    setStatus('auth-status', 'err', '✗ ' + err.message);
+  }
+}
+
+function onAuthSuccess(data) {
+  document.getElementById('auth-forms').style.display = 'none';
+  document.getElementById('session-box').style.display = 'flex';
+  document.getElementById('session-badge').textContent = `Authenticated: ${USER_EMAIL} | Vault Ready`;
+  setStatus('auth-status', 'ok', `✓ Session authorized as ${USER_EMAIL}. Ready to query and decrypt files.`);
+
+  ['files-card', 'icat-card'].forEach(id => {
+    document.getElementById(id).style.opacity = '1';
+    document.getElementById(id).style.pointerEvents = 'auto';
+  });
+
+  loadFiles();
+}
+
+function doLogout() {
+  localStorage.removeItem('jwt_token');
+  localStorage.removeItem('user_email');
+  localStorage.removeItem('account_password');
+  TOKEN = null;
+  USER_EMAIL = null;
+  KMS_PASSPHRASE = null;
+  SELECTED = null;
+
+  document.getElementById('auth-forms').style.display = 'block';
+  document.getElementById('session-box').style.display = 'none';
+  ['files-card', 'icat-card'].forEach(id => {
+    document.getElementById(id).style.opacity = '0.45';
+    document.getElementById(id).style.pointerEvents = 'none';
+  });
+  setStatus('auth-status', 'info', 'Logged out. Session cleared.');
+}
+
+async function loadFiles() {
+  try {
+    const r = await fetch('/api/files', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    const files = await r.json();
+    const tbody = document.getElementById('file-list');
+    if (!files.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No files shared with this receiver account</td></tr>';
+      return;
+    }
+    tbody.innerHTML = files.map(f =>
+      `<tr onclick="selectFile('${f.file_id}','${f.original_filename}')" data-fid="${f.file_id}">
+         <td><code style="color: var(--accent-cyan); font-weight:600;">${f.file_id}</code></td>
+         <td>${f.original_filename}</td>
+         <td>${f.owner_email}</td>
+         <td><span class="version-pill">v${f.version}</span></td>
+       </tr>`
+    ).join('');
+  } catch (err) {
+    setStatus('cloud-status', 'err', 'Failed to retrieve file manifest: ' + err.message);
+  }
+}
+
+function selectFile(fid, fname) {
+  SELECTED = fid;
+  document.getElementById('selected-file').textContent = fid + ' (' + fname + ')';
+  document.getElementById('decrypt-cloud-btn').disabled = false;
+  document.querySelectorAll('#file-list tr').forEach(tr => {
+    tr.classList.toggle('selected', tr.dataset.fid === fid);
+  });
+}
+
+async function doDecryptCloud() {
+  if (!SELECTED) return;
+  const btn = document.getElementById('decrypt-cloud-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Validating &amp; Decrypting…';
+  setStatus('cloud-status', 'info', 'Auditing version chain against local ledger, downloading fragments, and executing parallel AES-GCM recovery…');
+
+  try {
+    const pwd = KMS_PASSPHRASE || localStorage.getItem('account_password') || '';
+    const headers = { 'Authorization': 'Bearer ' + TOKEN };
+    if (pwd) {
+      headers['kms-passphrase'] = pwd;
+    }
+
+    const r = await fetch('/api/download/' + SELECTED, { headers });
+    if (!r.ok) {
+      const text = await r.text();
+      let msg = text;
+      try { msg = JSON.parse(text).detail || text; } catch (_) {}
+      throw new Error(msg || r.statusText);
+    }
+    const blob = await r.blob();
+    const cd = r.headers.get('content-disposition') || '';
+    const match = cd.match(/filename="(.+?)"/);
+    const fname = match ? match[1] : 'recovered_file';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fname;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    setStatus('cloud-status', 'ok', '✓ Payload verified (Merkle + anti-rollback validated), decrypted, and extracted.');
+  } catch (e) {
+    setStatus('cloud-status', 'err', '✗ ' + e.message);
+  }
+  btn.disabled = false;
+  btn.textContent = 'Validate Integrity & Decrypt Cloud Payload';
+}
+
+async function doIngestAndDecrypt() {
+  const fileInput = document.getElementById('icat-file-input');
+  if (!fileInput.files.length) {
+    setStatus('icat-status', 'err', 'Please select a .icat.json file first.');
+    return;
+  }
+  const pwd = KMS_PASSPHRASE || localStorage.getItem('account_password') || '';
+  if (!pwd) {
+    setStatus('icat-status', 'err', 'Account password is required to unlock your private keys.');
+    return;
+  }
+
+  const btn = document.getElementById('icat-decrypt-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Ingesting Capsule &amp; Decrypting…';
+  setStatus('icat-status', 'info', 'Verifying Ed25519 capsule signature, checking anti-rollback, decapsulating ML-KEM-768 ciphertext, and parallel decrypting…');
+
+  const fd = new FormData();
+  fd.append('icat_file', fileInput.files[0]);
+  fd.append('passphrase', pwd);
+
+  try {
+    const r = await fetch('/api/icat/ingest-and-decrypt', {
+      method: 'POST',
+      body: fd,
+      headers: { 'Authorization': 'Bearer ' + TOKEN }
+    });
+    if (!r.ok) {
+      const text = await r.text();
+      let msg = text;
+      try { msg = JSON.parse(text).detail || text; } catch (_) {}
+      throw new Error(msg || r.statusText);
+    }
+    const blob = await r.blob();
+    const cd = r.headers.get('content-disposition') || '';
+    const match = cd.match(/filename="(.+?)"/);
+    const fname = match ? match[1] : 'decrypted_recovered_file';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fname;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    setStatus('icat-status', 'ok', '✓ ICAT Capsule Signature Verified! Reassembled original file downloaded.');
+  } catch (e) {
+    setStatus('icat-status', 'err', '✗ ' + e.message);
+  }
+  btn.disabled = false;
+  btn.textContent = 'Validate Capsule Signature & Decrypt Payload';
+}
+
+// Check saved session on load
+window.addEventListener('DOMContentLoaded', () => {
+  const savedToken = localStorage.getItem('jwt_token');
+  const savedEmail = localStorage.getItem('user_email');
+  const savedPass = localStorage.getItem('account_password');
+  if (savedToken && savedEmail) {
+    TOKEN = savedToken;
+    USER_EMAIL = savedEmail;
+    KMS_PASSPHRASE = savedPass;
+    onAuthSuccess({});
+  }
+});
+</script>
+</body>
+</html>
