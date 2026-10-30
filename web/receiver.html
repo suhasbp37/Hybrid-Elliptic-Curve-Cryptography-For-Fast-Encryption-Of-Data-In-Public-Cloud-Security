@@ -440,42 +440,10 @@ tr.selected td {
     <div class="status" id="auth-status" role="status"></div>
   </section>
 
-  <!-- Step 2: Inbound Cloud Files (Shared via Supabase) -->
-  <section class="panel" id="files-card" style="opacity: 0.45; pointer-events: none;">
-    <div class="panel-header">
-      <h2 class="panel-title">02. Cloud Inbound Enclaves</h2>
-      <span class="panel-spec">Supabase Encrypted Bucket</span>
-    </div>
-    <button class="btn-secondary" onclick="loadFiles()" style="margin-bottom: 0.75rem;">Query Shared Files</button>
-    <div class="table-wrapper">
-      <table>
-        <thead>
-          <tr>
-            <th>Artifact ID</th>
-            <th>Original Filename</th>
-            <th>Sender Origin</th>
-            <th>Version Chain</th>
-          </tr>
-        </thead>
-        <tbody id="file-list">
-          <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No encrypted files queried yet</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-dim); margin-top: 1.25rem; margin-bottom: 0.75rem;">
-      Selected Target: <span id="selected-file" style="color: var(--accent-emerald); font-weight: 600;">None selected</span>
-    </div>
-    <button id="decrypt-cloud-btn" class="btn-primary" onclick="doDecryptCloud()" disabled>
-      Validate Integrity &amp; Decrypt Cloud Payload
-    </button>
-    <div class="status" id="cloud-status" role="status"></div>
-  </section>
-
-  <!-- Step 3: Offline / ICAT Capsule Ingestion (.icat.json) -->
+  <!-- Step 2: Offline / ICAT Capsule Ingestion (.icat.json) -->
   <section class="panel" id="icat-card" style="opacity: 0.45; pointer-events: none;">
     <div class="panel-header">
-      <h2 class="panel-title">03. Ingest ICAT Capsule (.icat.json)</h2>
+      <h2 class="panel-title">02. Ingest ICAT Capsule (.icat.json)</h2>
       <span class="panel-spec">Split-Trust Decapsulation</span>
     </div>
     <p style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 1rem;">
@@ -581,14 +549,11 @@ function onAuthSuccess(data) {
   document.getElementById('auth-forms').style.display = 'none';
   document.getElementById('session-box').style.display = 'flex';
   document.getElementById('session-badge').textContent = `Authenticated: ${USER_EMAIL} | Vault Ready`;
-  setStatus('auth-status', 'ok', `✓ Session authorized as ${USER_EMAIL}. Ready to query and decrypt files.`);
+  setStatus('auth-status', 'ok', `✓ Session authorized as ${USER_EMAIL}. Ready to ingest ICAT capsule.`);
 
-  ['files-card', 'icat-card'].forEach(id => {
-    document.getElementById(id).style.opacity = '1';
-    document.getElementById(id).style.pointerEvents = 'auto';
-  });
-
-  loadFiles();
+  const icatCard = document.getElementById('icat-card');
+  icatCard.style.opacity = '1';
+  icatCard.style.pointerEvents = 'auto';
 }
 
 function doLogout() {
@@ -598,84 +563,13 @@ function doLogout() {
   TOKEN = null;
   USER_EMAIL = null;
   KMS_PASSPHRASE = null;
-  SELECTED = null;
 
   document.getElementById('auth-forms').style.display = 'block';
   document.getElementById('session-box').style.display = 'none';
-  ['files-card', 'icat-card'].forEach(id => {
-    document.getElementById(id).style.opacity = '0.45';
-    document.getElementById(id).style.pointerEvents = 'none';
-  });
+  const icatCard = document.getElementById('icat-card');
+  icatCard.style.opacity = '0.45';
+  icatCard.style.pointerEvents = 'none';
   setStatus('auth-status', 'info', 'Logged out. Session cleared.');
-}
-
-async function loadFiles() {
-  try {
-    const r = await fetch('/api/files', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
-    const files = await r.json();
-    const tbody = document.getElementById('file-list');
-    if (!files.length) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No files shared with this receiver account</td></tr>';
-      return;
-    }
-    tbody.innerHTML = files.map(f =>
-      `<tr onclick="selectFile('${f.file_id}','${f.original_filename}')" data-fid="${f.file_id}">
-         <td><code style="color: var(--accent-cyan); font-weight:600;">${f.file_id}</code></td>
-         <td>${f.original_filename}</td>
-         <td>${f.owner_email}</td>
-         <td><span class="version-pill">v${f.version}</span></td>
-       </tr>`
-    ).join('');
-  } catch (err) {
-    setStatus('cloud-status', 'err', 'Failed to retrieve file manifest: ' + err.message);
-  }
-}
-
-function selectFile(fid, fname) {
-  SELECTED = fid;
-  document.getElementById('selected-file').textContent = fid + ' (' + fname + ')';
-  document.getElementById('decrypt-cloud-btn').disabled = false;
-  document.querySelectorAll('#file-list tr').forEach(tr => {
-    tr.classList.toggle('selected', tr.dataset.fid === fid);
-  });
-}
-
-async function doDecryptCloud() {
-  if (!SELECTED) return;
-  const btn = document.getElementById('decrypt-cloud-btn');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Validating &amp; Decrypting…';
-  setStatus('cloud-status', 'info', 'Auditing version chain against local ledger, downloading fragments, and executing parallel AES-GCM recovery…');
-
-  try {
-    const pwd = KMS_PASSPHRASE || localStorage.getItem('account_password') || '';
-    const headers = { 'Authorization': 'Bearer ' + TOKEN };
-    if (pwd) {
-      headers['kms-passphrase'] = pwd;
-    }
-
-    const r = await fetch('/api/download/' + SELECTED, { headers });
-    if (!r.ok) {
-      const text = await r.text();
-      let msg = text;
-      try { msg = JSON.parse(text).detail || text; } catch (_) {}
-      throw new Error(msg || r.statusText);
-    }
-    const blob = await r.blob();
-    const cd = r.headers.get('content-disposition') || '';
-    const match = cd.match(/filename="(.+?)"/);
-    const fname = match ? match[1] : 'recovered_file';
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = fname;
-    a.click();
-    URL.revokeObjectURL(a.href);
-    setStatus('cloud-status', 'ok', '✓ Payload verified (Merkle + anti-rollback validated), decrypted, and extracted.');
-  } catch (e) {
-    setStatus('cloud-status', 'err', '✗ ' + e.message);
-  }
-  btn.disabled = false;
-  btn.textContent = 'Validate Integrity & Decrypt Cloud Payload';
 }
 
 async function doIngestAndDecrypt() {
